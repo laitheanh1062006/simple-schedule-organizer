@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,16 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// Custom TodoDesk colors
+				todoDesk: {
+					white: '#FFFFFF',
+					orange: {
+						soft: '#FFE4CC',
+						accent: '#FFA500',
+					},
+					text: '#333333',
+				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
