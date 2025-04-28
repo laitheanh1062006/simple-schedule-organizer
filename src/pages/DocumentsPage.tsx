@@ -1,15 +1,15 @@
-
 import { useState } from "react";
 import { useAppContext, Document as DocumentType } from "@/context/AppContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, FolderPlus, Plus, Trash2, Pencil, Save, FolderOpen } from "lucide-react";
+import { FileText, FolderPlus, Plus, Trash2, Pencil, Save, FolderOpen, Upload, Download } from "lucide-react";
 import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -31,7 +31,8 @@ const DocumentsPage = () => {
   const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
   const [isEditingDocument, setIsEditingDocument] = useState(false);
   
-  // Form state
+  const [fileContent, setFileContent] = useState<string | ArrayBuffer | null>(null);
+  const [fileName, setFileName] = useState("");
   const [newDocumentName, setNewDocumentName] = useState("");
   const [newDocumentContent, setNewDocumentContent] = useState("");
   const [newDocumentFolder, setNewDocumentFolder] = useState<string | undefined>(undefined);
@@ -39,18 +40,56 @@ const DocumentsPage = () => {
   const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(undefined);
   const [documentEdits, setDocumentEdits] = useState({ name: "", content: "" });
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFileContent(e.target?.result || null);
+        setFileName(file.name);
+        setNewDocumentName(file.name);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddDocument = () => {
     if (newDocumentName.trim()) {
       addDocument({
         name: newDocumentName.trim(),
-        content: newDocumentContent,
+        content: fileContent ? String(fileContent) : newDocumentContent,
         folderId: newDocumentFolder,
       });
       toast.success("Document added successfully");
       setNewDocumentName("");
       setNewDocumentContent("");
       setNewDocumentFolder(undefined);
+      setFileContent(null);
+      setFileName("");
       setShowAddDocument(false);
+    }
+  };
+
+  const handleDownloadDocument = (document: DocumentType) => {
+    const isBase64 = document.content.startsWith('data:');
+    
+    if (isBase64) {
+      const link = document.createElement('a');
+      link.href = document.content;
+      link.download = document.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      const blob = new Blob([document.content], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${document.name}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     }
   };
 
@@ -102,7 +141,6 @@ const DocumentsPage = () => {
     toast.success("Folder deleted successfully");
   };
 
-  // Filtered documents based on selected folder
   const filteredDocuments = selectedFolderId
     ? documents.filter((doc) => doc.folderId === selectedFolderId)
     : documents.filter((doc) => !doc.folderId);
@@ -128,11 +166,13 @@ const DocumentsPage = () => {
         </div>
       </div>
 
-      {/* Add Document Dialog */}
       <Dialog open={showAddDocument} onOpenChange={setShowAddDocument}>
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
             <DialogTitle>Create New Document</DialogTitle>
+            <DialogDescription>
+              Upload a Word document or create a text document.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div>
@@ -157,12 +197,36 @@ const DocumentsPage = () => {
                 </Select>
               )}
             </div>
-            <Textarea
-              placeholder="Document content"
-              value={newDocumentContent}
-              onChange={(e) => setNewDocumentContent(e.target.value)}
-              className="min-h-[200px]"
-            />
+            <div className="space-y-4">
+              <div className="flex items-center justify-center w-full">
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Upload className="w-8 h-8 mb-2 text-gray-500" />
+                    <p className="mb-2 text-sm text-gray-500">
+                      <span className="font-semibold">Click to upload</span> or drag and drop
+                    </p>
+                    <p className="text-xs text-gray-500">Word documents (DOC, DOCX)</p>
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".doc,.docx"
+                    onChange={handleFileUpload}
+                  />
+                </label>
+              </div>
+              {fileName && (
+                <p className="text-sm text-gray-500">Selected file: {fileName}</p>
+              )}
+              {!fileContent && (
+                <Textarea
+                  placeholder="Or type document content here"
+                  value={newDocumentContent}
+                  onChange={(e) => setNewDocumentContent(e.target.value)}
+                  className="min-h-[200px]"
+                />
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDocument(false)}>
@@ -179,7 +243,6 @@ const DocumentsPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add Folder Dialog */}
       <Dialog open={showAddFolder} onOpenChange={setShowAddFolder}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -207,7 +270,6 @@ const DocumentsPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Document Preview Dialog */}
       <Dialog open={!!selectedDocument} onOpenChange={(open) => !open && setSelectedDocument(null)}>
         {selectedDocument && (
           <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
@@ -227,31 +289,42 @@ const DocumentsPage = () => {
             </DialogHeader>
             
             <div className="py-4">
-              {isEditingDocument ? (
-                <Textarea
-                  value={documentEdits.content}
-                  onChange={(e) => setDocumentEdits({ ...documentEdits, content: e.target.value })}
-                  className="min-h-[300px]"
-                />
+              {selectedDocument.content.startsWith('data:') ? (
+                <div className="text-center">
+                  <p className="mb-4">This is a Word document.</p>
+                  <Button onClick={() => handleDownloadDocument(selectedDocument)}>
+                    <Download className="mr-2 h-4 w-4" /> Download Document
+                  </Button>
+                </div>
               ) : (
-                <div className="whitespace-pre-wrap">{selectedDocument.content}</div>
+                isEditingDocument ? (
+                  <Textarea
+                    value={documentEdits.content}
+                    onChange={(e) => setDocumentEdits({ ...documentEdits, content: e.target.value })}
+                    className="min-h-[300px]"
+                  />
+                ) : (
+                  <div className="whitespace-pre-wrap">{selectedDocument.content}</div>
+                )
               )}
             </div>
             
             <DialogFooter>
-              {isEditingDocument ? (
-                <div className="flex space-x-2">
-                  <Button variant="outline" onClick={() => setIsEditingDocument(false)}>
-                    Cancel
+              {!selectedDocument.content.startsWith('data:') && (
+                isEditingDocument ? (
+                  <div className="flex space-x-2">
+                    <Button variant="outline" onClick={() => setIsEditingDocument(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveDocument}>
+                      <Save className="mr-2 h-4 w-4" /> Save
+                    </Button>
+                  </div>
+                ) : (
+                  <Button onClick={() => setIsEditingDocument(true)}>
+                    <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Button>
-                  <Button onClick={handleSaveDocument}>
-                    <Save className="mr-2 h-4 w-4" /> Save
-                  </Button>
-                </div>
-              ) : (
-                <Button onClick={() => setIsEditingDocument(true)}>
-                  <Pencil className="mr-2 h-4 w-4" /> Edit
-                </Button>
+                )
               )}
             </DialogFooter>
           </DialogContent>
@@ -259,7 +332,6 @@ const DocumentsPage = () => {
       </Dialog>
 
       <div className="flex gap-6">
-        {/* Folders Sidebar */}
         <div className="w-1/4 space-y-4">
           <h2 className="font-semibold text-lg border-b pb-2">Folders</h2>
           
@@ -300,7 +372,6 @@ const DocumentsPage = () => {
           </div>
         </div>
 
-        {/* Documents List */}
         <div className="w-3/4">
           <h2 className="font-semibold text-lg border-b pb-2 mb-4">
             {selectedFolderId 
