@@ -70,25 +70,25 @@ const DocumentsPage = () => {
     }
   };
 
-  const handleDownloadDocument = (document: DocumentType) => {
-    const isBase64 = document.content.startsWith('data:');
+  const handleDownloadDocument = (doc: DocumentType) => {
+    const isBase64 = doc.content.startsWith('data:');
     
     if (isBase64) {
-      const link = document.createElement('a');
-      link.href = document.content;
-      link.download = document.name;
-      document.body.appendChild(link);
+      const link = window.document.createElement('a');
+      link.href = doc.content;
+      link.download = doc.name;
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
     } else {
-      const blob = new Blob([document.content], { type: 'text/plain' });
+      const blob = new Blob([doc.content], { type: 'text/plain' });
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = url;
-      link.download = `${document.name}.txt`;
-      document.body.appendChild(link);
+      link.download = `${doc.name}.txt`;
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     }
   };
