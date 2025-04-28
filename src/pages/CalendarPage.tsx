@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
@@ -6,11 +5,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Calendar as CalendarIcon, ArrowLeft, ArrowRight } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, isSameDay, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type ViewMode = "week" | "month";
 
 const CalendarPage = () => {
-  const { tasks } = useAppContext();
+  const { tasks, updateTask } = useAppContext();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("week");
 
@@ -52,6 +52,10 @@ const CalendarPage = () => {
     );
   };
 
+  const handleToggleComplete = (taskId: string, completed: boolean) => {
+    updateTask(taskId, { completed });
+  };
+
   const calculateStats = () => {
     const total = tasksWithDeadline.length;
     const completed = tasksWithDeadline.filter((task) => task.completed).length;
@@ -86,13 +90,25 @@ const CalendarPage = () => {
                   <div 
                     key={task.id}
                     className={cn(
-                      "text-xs p-1 rounded truncate",
+                      "flex items-center space-x-2 p-1 rounded",
                       task.completed 
                         ? "bg-green-100 text-green-800" 
                         : "bg-todoDesk-orange-soft text-todoDesk-text"
                     )}
                   >
-                    {task.title}
+                    <Checkbox 
+                      checked={task.completed}
+                      onCheckedChange={(checked) => 
+                        handleToggleComplete(task.id, checked as boolean)
+                      }
+                      className="h-3 w-3"
+                    />
+                    <span className={cn(
+                      "text-xs truncate",
+                      task.completed && "line-through"
+                    )}>
+                      {task.title}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -140,13 +156,25 @@ const CalendarPage = () => {
                 <div 
                   key={task.id}
                   className={cn(
-                    "text-xs p-1 rounded truncate",
+                    "flex items-center space-x-1 text-xs p-1 rounded",
                     task.completed 
                       ? "bg-green-100 text-green-800" 
                       : "bg-todoDesk-orange-soft text-todoDesk-text"
                   )}
                 >
-                  {task.title}
+                  <Checkbox 
+                    checked={task.completed}
+                    onCheckedChange={(checked) => 
+                      handleToggleComplete(task.id, checked as boolean)
+                    }
+                    className="h-3 w-3"
+                  />
+                  <span className={cn(
+                    "truncate",
+                    task.completed && "line-through"
+                  )}>
+                    {task.title}
+                  </span>
                 </div>
               ))}
               {dayTasks.length > 3 && (
@@ -184,7 +212,7 @@ const CalendarPage = () => {
       </>
     );
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
